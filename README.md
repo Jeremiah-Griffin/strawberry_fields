@@ -1,5 +1,5 @@
 Strawberry Fields allows for the "iteration" of struct fields without allocation or 
-manipulating the memory layout of the type.
+manipulating the memory layout of the type. 
 
 # FAQ
 

@@ -1,11 +1,15 @@
+[workspace]
+members = ["macros"]
+
 [package]
 name = "strawberry_fields"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-quote = "1.0.36"
-syn = "2.0.66"
+strawberry_fields_macros = {path = "macros", version = "0.1.0"}
 
-[lib]
-proc-macro = true
+[dev-dependencies]
+trybuild = "1.0.96"
+
+
