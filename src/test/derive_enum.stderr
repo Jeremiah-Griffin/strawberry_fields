@@ -1,7 +1,0 @@
-error: proc-macro derive panicked
- --> src/test/derive_enum.rs:3:10
-  |
-3 | #[derive(StrawberryFields)]
-  |          ^^^^^^^^^^^^^^^^
-  |
-  = help: message: StrawberryFields may only be derived for structs

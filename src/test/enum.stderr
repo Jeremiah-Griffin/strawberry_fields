@@ -1,0 +1,7 @@
+error: custom attribute panicked
+ --> src/test/enum.rs:3:1
+  |
+3 | #[strawberry_fields(u32)]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: message: StrawberryFields may only be derived for structs.: Error("expected `struct`")
