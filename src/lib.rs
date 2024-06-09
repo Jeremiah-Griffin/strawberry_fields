@@ -5,7 +5,7 @@ mod test;
 //note: we can't do something like to_array as users may wish to use an impl trait instead of a concrete type
 //for Alias, and silently boxing trait objects for them is probably a bad idea.
 
-///Provides an `std::iter`- like API for consuming, mutating, and reading the fields of a struct.
+///Provides a `std::iter`- like API for consuming, mutating, and reading the fields of a struct.
 ///
 ///SAFETY: Implementing this trait by hand will result in erroneuous results if the struct's fields changes. This ruins the entire point of the crate. Don't do that.
 pub unsafe trait StrawberryFields {

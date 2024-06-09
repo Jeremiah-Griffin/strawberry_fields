@@ -2,7 +2,7 @@ Strawberry Fields allows for the "iteration" of struct fields without allocation
 manipulating the memory layout of the type. 
 
 This crate's api mirrors the `Iterator` trait from the standard library, with the primary distinction being that
-there are seperate methods for shared and unique reference types.
+there are seperate methods for owned, shared and unique reference types.
 
 # FAQ
 
