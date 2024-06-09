@@ -76,6 +76,80 @@ fn any_fields_ref_empty() {
 }
 
 #[test]
+fn find_field() {
+    assert_eq!(NOT_EMPTY.find_field(|f| *f == 1), Some(1));
+}
+
+#[test]
+fn find_field_ref() {
+    assert_eq!(NOT_EMPTY.find_field_ref(|f| *f == 1), Some(&1));
+}
+
+#[test]
+fn find_field_empty() {
+    assert_eq!(EMPTY.find_field(|f| *f == 1), None);
+}
+
+#[test]
+fn find_field_ref_empty() {
+    assert_eq!(EMPTY.find_field_ref(|f| *f == 1), None);
+}
+
+#[test]
+fn for_fields() {
+    let mut i = 0;
+
+    NOT_EMPTY.for_fields(|f| i += f);
+
+    assert_eq!(i, 3);
+}
+
+#[test]
+fn for_fields_ref() {
+    let mut i = 0;
+
+    NOT_EMPTY.for_fields_ref(|f| i += f);
+
+    assert_eq!(i, 3);
+}
+
+#[test]
+fn for_fields_mut() {
+    let mut not_empty = NOT_EMPTY;
+
+    not_empty.for_fields_mut(|f| *f = 3);
+    assert_eq!(not_empty.first, 3);
+    assert_eq!(not_empty.second, 3);
+}
+
+#[test]
+fn for_fields_empty() {
+    let mut i = 0;
+
+    EMPTY.for_fields(|f| i += f);
+
+    assert_eq!(i, 0);
+}
+
+#[test]
+fn for_fields_ref_empty() {
+    let mut i = 0;
+
+    EMPTY.for_fields_ref(|f| i += f);
+
+    assert_eq!(i, 0);
+}
+
+#[test]
+fn for_fields_mut_empty() {
+    let mut empty = EMPTY;
+
+    empty.for_fields_mut(|f| *f = 3);
+
+    assert_eq!(empty.find_field(|f| *f != u32::MAX), None);
+}
+
+#[test]
 fn fold_fields() {
     assert_eq!(NOT_EMPTY.fold_fields(0, |i, acc| acc + i), 3);
 }
@@ -93,4 +167,10 @@ fn fold_fields_empty() {
 #[test]
 fn fold_fields_ref_empty() {
     assert_eq!(EMPTY.fold_fields(0, |i, acc| acc + i), 0);
+}
+
+#[test]
+fn field_count() {
+    assert_eq!(Empty::FIELD_COUNT, 0);
+    assert_eq!(NotEmpty::FIELD_COUNT, 2)
 }

@@ -3,6 +3,8 @@ use quote::quote;
 use syn::{parse, Ident, ItemStruct, Type};
 
 #[proc_macro_attribute]
+///Generates an implementation for `StrawberryFields` in a safe way that is guaranteed to 
+///be total over all struct fields.
 pub fn strawberry_fields(type_parameter: TokenStream, input: TokenStream) -> TokenStream {
     if type_parameter.is_empty() {
         panic!("Type parameter of StrawberryFields must not be empty.")
@@ -30,74 +32,99 @@ pub fn strawberry_fields(type_parameter: TokenStream, input: TokenStream) -> Tok
         })
         .collect::<Vec<Ident>>();
 
-    quote! {
+    let field_count = fields.len();
 
+    quote! {
     #struct_definition
 
-
      unsafe impl strawberry_fields::StrawberryFields for #name {
-            type Alias = #type_parameter;
+            type Argument = #type_parameter;
 
-            fn all_fields(self, mut function: impl FnMut(Self::Alias) -> bool) -> bool{
+            const FIELD_COUNT: usize = #field_count;
+
+            fn all_fields(self, mut predicate: impl FnMut(Self::Argument) -> bool) -> bool{
                 #(
-                    if !function(self.#fields) {return false};
+                    if !predicate(self.#fields) {return false};
                 )*
                 true
             }
 
-            fn all_fields_ref(&self, mut function: impl FnMut(&Self::Alias) -> bool) -> bool{
+            fn all_fields_ref(&self, mut predicate: impl FnMut(&Self::Argument) -> bool) -> bool{
                 #(
-                    if !function(&self.#fields){return false};
+                    if !predicate(&self.#fields){return false};
                 )*
                 true
             }
 
-            fn any_fields(self, mut function: impl FnMut(Self::Alias) -> bool) -> bool{
+            fn any_fields(self, mut predicate: impl FnMut(Self::Argument) -> bool) -> bool{
                 #(
-                    if function(self.#fields) {return true};
+                    if predicate(self.#fields) {return true};
                 )*
                 false
             }
 
-            fn any_fields_ref(&self, mut function: impl FnMut(&Self::Alias) -> bool) -> bool{
+            fn any_fields_ref(&self, mut predicate: impl FnMut(&Self::Argument) -> bool) -> bool{
                 #(
-                    if function(&self.#fields) {return true};
+                    if predicate(&self.#fields) {return true};
                 )*
                 false
             }
 
-            ///Applies `function` to all fields of `self`
-            fn for_fields(self, mut function: impl FnMut(Self::Alias)){
+            fn find_field(
+                self,
+                mut predicate: impl FnMut(&Self::Argument) -> bool,
+            ) -> Option<Self::Argument>{
+                #(
+                    if predicate(&self.#fields) {return Some(self.#fields)};
+                )*
+                None
+            }
+
+            fn find_field_ref(
+                &self,
+                mut predicate: impl FnMut(&Self::Argument) -> bool,
+            ) -> Option<&Self::Argument>{
+                 #(
+                    if predicate(&self.#fields) {return Some(&self.#fields)};
+                )*
+                None
+            }
+
+            fn fold_fields<Acc>(self, initial: Acc, mut predicate: impl FnMut(Self::Argument, Acc) -> Acc) -> Acc{
+                let mut accumulator = initial;
+                #(
+                    accumulator = predicate(self.#fields, accumulator);
+                )*
+                accumulator
+            }
+
+            fn fold_fields_ref<Acc>(&self, initial: Acc, mut predicate: impl FnMut(&Self::Argument, Acc) -> Acc) -> Acc{
+                let mut accumulator = initial;
+                #(
+                    accumulator = predicate(&self.#fields, accumulator);
+                )*
+                accumulator
+            }
+
+            fn for_fields(self, mut function: impl FnMut(Self::Argument)){
                 #(
                     function(self.#fields);
                 )*
 
             }
 
-            ///Applies `function` to all fields of `&self`
-            fn for_fields_ref(&self, mut function: impl FnMut(&Self::Alias)){
+            fn for_fields_ref(&self, mut function: impl FnMut(&Self::Argument)){
                 #(
                     function(&self.#fields);
                 )*
             }
-
-            fn fold_fields<Acc>(self, initial: Acc, mut function: impl FnMut(Self::Alias, Acc) -> Acc) -> Acc{
-                let mut accumulator = initial;
+            
+            fn for_fields_mut(&mut self, mut function: impl FnMut(&mut Self::Argument)){
                 #(
-                    accumulator = function(self.#fields, accumulator);
+                    function(&mut self.#fields);
                 )*
-                accumulator
-            }
-
-            fn fold_fields_ref<Acc>(&self, initial: Acc, mut function: impl FnMut(&Self::Alias, Acc) -> Acc) -> Acc{
-                let mut accumulator = initial;
-                #(
-                    accumulator = function(&self.#fields, accumulator);
-                )*
-                accumulator
             }
         }
-
     }
     .into()
 }
