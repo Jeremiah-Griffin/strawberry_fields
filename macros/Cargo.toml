@@ -2,6 +2,11 @@
 name = "strawberry_fields_macros"
 version = "0.1.0"
 edition = "2021"
+description = "Procedural macros for strawberry_fields."
+license = "MIT"
+repository = "https://github.com/Jeremiah-Griffin/strawberry_fields"
+categories = ["data-structures"]
+keywords = []
 
 [dependencies]
 quote = "1.0.36"
