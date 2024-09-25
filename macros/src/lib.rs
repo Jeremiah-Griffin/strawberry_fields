@@ -128,3 +128,13 @@ pub fn strawberry_fields(type_parameter: TokenStream, input: TokenStream) -> Tok
     }
     .into()
 }
+
+#[proc_macro_attribute]
+pub fn for_variants(pairs: TokenStream, item: TokenStream) -> {
+
+    let pairs: Li    
+
+
+
+}
+
