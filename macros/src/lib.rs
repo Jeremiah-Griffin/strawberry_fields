@@ -1,6 +1,6 @@
-use proc_macro::TokenStream;
-use quote::quote;
-use syn::{parse, Ident, ItemStruct, Type};
+use proc_macro::{Span, TokenStream};
+use quote::{quote, ToTokens};
+use syn::{parse::Parse,parse, punctuated::Punctuated, Expr, ExprTuple, Ident, ItemStruct, Token, Type};
 
 #[proc_macro_attribute]
 ///Generates an implementation for `StrawberryFields` in a safe way that is guaranteed to 
@@ -130,14 +130,66 @@ pub fn strawberry_fields(type_parameter: TokenStream, input: TokenStream) -> Tok
     .into()
 }
 
-/*
+struct VariantsInput{
+    ///Element 0 is a the bare variant name (no qualified path)
+    ///Element 1 is the expression we're going to be matching against. 
+    list: Punctuated<ExprTuple, Token![,]>,
+}
 
-#[proc_macro_attribute]
-pub fn for_variants(pairs: TokenStream, item: TokenStream) -> {
+impl VariantsInput{
 
-    let pairs: Li    
+    fn validate(input: TokenStream) -> Self{
+        let pairs: VariantsInput = parse(input).expect("Expected list of tuples.");
+            
 
+        for e in pairs.list.iter(){
 
+            let element_string = e.to_token_stream().to_string();
+
+            let tuple_pair_count = e.elems.len();
+
+            if tuple_pair_count != 2 {
+                panic!("All elements should have a length of 2 ( a key and a value) but {element_string} is {tuple_pair_count}")
+            }            
+            
+        
+        };
+        pairs    
+    }
 
 }
-*/
+
+impl Parse for VariantsInput{
+    fn parse(input: parse::ParseStream) -> syn::Result<Self> {
+        Punctuated::parse_terminated(input).map(|list| Self{list})        
+    }
+}
+
+#[proc_macro_attribute]
+pub fn test_for_variants(pairs: TokenStream, item: TokenStream) -> TokenStream {
+    let pairs = VariantsInput::validate(pairs);
+
+    let variants = pairs.list.iter().map(|e| e.)
+
+    //We add some randomness to the test module name so that users can generate mulitple sets of tests for the same enum.
+    //TODO: import rand
+    //TODO: replace this with a user provided name.
+    let random_stem = String::new();
+
+    let test_module_name = Ident::new(format!("strawberry_fields_generated_variants_test_{random_stem}").as_str(), Span::call_site().into())
+
+    quote!{
+
+        #[cfg(test)]
+        mod #module_name{
+            #[test]
+        
+        }
+
+        
+    
+    }
+
+    
+
+}
