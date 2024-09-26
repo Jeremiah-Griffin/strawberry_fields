@@ -16,6 +16,7 @@ pub fn strawberry_fields(type_parameter: TokenStream, input: TokenStream) -> Tok
 
     let struct_definition = data.clone();
     let name = data.ident;
+    let (impl_generics, type_generics, where_clause)= data.generics.split_for_impl();
 
     let fields = data
         .fields
@@ -37,7 +38,7 @@ pub fn strawberry_fields(type_parameter: TokenStream, input: TokenStream) -> Tok
     quote! {
     #struct_definition
 
-     unsafe impl strawberry_fields::StrawberryFields for #name {
+     unsafe impl #impl_generics strawberry_fields::StrawberryFields for #name #type_generics #where_clause{
             type Argument = #type_parameter;
 
             const FIELD_COUNT: usize = #field_count;
@@ -129,6 +130,8 @@ pub fn strawberry_fields(type_parameter: TokenStream, input: TokenStream) -> Tok
     .into()
 }
 
+/*
+
 #[proc_macro_attribute]
 pub fn for_variants(pairs: TokenStream, item: TokenStream) -> {
 
@@ -137,4 +140,4 @@ pub fn for_variants(pairs: TokenStream, item: TokenStream) -> {
 
 
 }
-
+*/

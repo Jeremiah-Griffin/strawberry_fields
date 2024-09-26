@@ -7,7 +7,7 @@ mod test;
 
 ///Provides a `std::iter`- like API for consuming, mutating, and reading the fields of a struct.
 ///
-///SAFETY: Implementing this trait by hand will result in erroneuous results if the struct's fields changes. This ruins the entire point of the crate. Don't do that.
+///SAFETY: Implementing this trait by hand will result in erroneuous results if the struct's field count changes. This ruins the entire point of the crate. Don't do that.
 pub unsafe trait StrawberryFields {
     ///The type of the struct field methods will be called on. This may be
     ///a concrete type, or, if the `impl Trait in Type Alias` feature is enabled or stablized, an `impl Trait` generic bound.
