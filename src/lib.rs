@@ -1,6 +1,9 @@
 pub use strawberry_fields_macros::strawberry_fields;
 //re export derive macro
+#[cfg(test)]
 mod test;
+///Other macros that are in the same vein as the crate, but aren't to do with StrawberryFields itself.
+pub mod utils;
 
 //note: we can't do something like to_array as users may wish to use an impl trait instead of a concrete type
 //for Alias, and silently boxing trait objects for them is probably a bad idea.

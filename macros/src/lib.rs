@@ -1,16 +1,16 @@
 use proc_macro::{Span, TokenStream};
 use quote::{quote, ToTokens};
-use syn::{parse::Parse,parse, punctuated::Punctuated, Expr, ExprTuple, Ident, ItemStruct, Token, Type};
+use syn::{parse::Parse, parse, punctuated::Punctuated, ExprTuple, Ident, ItemEnum, ItemStruct, Token, Type};
 
 #[proc_macro_attribute]
 ///Generates an implementation for `StrawberryFields` in a safe way that is guaranteed to 
 ///be total over all struct fields.
 pub fn strawberry_fields(type_parameter: TokenStream, input: TokenStream) -> TokenStream {
     if type_parameter.is_empty() {
-        panic!("Type parameter of StrawberryFields must not be empty.")
+        panic!("Type parameter must not be empty.")
     }
     let type_parameter: Type = parse(type_parameter)
-        .expect("Found a non type parameter in the type position of StrawberryFields.");
+        .expect("Found a non type or generic parameter in type position.");
 
     let data: ItemStruct = parse(input).expect("StrawberryFields may only be derived for structs.");
 
@@ -166,30 +166,43 @@ impl Parse for VariantsInput{
 }
 
 #[proc_macro_attribute]
-pub fn test_for_variants(pairs: TokenStream, item: TokenStream) -> TokenStream {
+///TODO: take a name for each function testing an enum variant
+///TODO: take 
+pub fn test_variants_eq(pairs: TokenStream, item: TokenStream) -> TokenStream {
     let pairs = VariantsInput::validate(pairs);
 
-    let variants = pairs.list.iter().map(|e| e.)
+    let mut variant_names = Vec::with_capacity(pairs.list.len());
+    let mut test_expressions = Vec::with_capacity(pairs.list.len());
+
+    for elem in pairs.list.into_iter().map(|e| e.elems){
+        let length = elem.len();
+        if length != 2{
+            panic!("expected a tuple of the variant name and the expression to be tested. Found a different number of {length} elements instead.")
+        }
+        //length is checked above to be two, so these unwraps should never panic.
+        variant_names.push(elem.first().unwrap().clone());
+        test_expressions.push(elem.last().unwrap().clone());
+    }
+
+    let enum_definition = parse::<ItemEnum>(item).expect("test_for_variants may only be used with enums.");
+
+    let enum_name = enum_definition.ident.clone();
 
     //We add some randomness to the test module name so that users can generate mulitple sets of tests for the same enum.
-    //TODO: import rand
-    //TODO: replace this with a user provided name.
-    let random_stem = String::new();
-
-    let test_module_name = Ident::new(format!("strawberry_fields_generated_variants_test_{random_stem}").as_str(), Span::call_site().into())
+    let module_name = Ident::new(format!("strawberry_fields_generated_variants_test_insert_name_here").as_str(), Span::call_site().into());
 
     quote!{
 
+        #enum_definition
+
+        
         #[cfg(test)]
         mod #module_name{
-            #[test]
-        
-        }
-
-        
-    
-    }
-
-    
-
+            #(
+                fn #variant_names(){
+                    assert_eq!(super::#enum_name::#variant_names, #test_expressions);                
+                }
+            )*
+        }    
+    }.into()    
 }

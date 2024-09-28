@@ -3,7 +3,7 @@ members = ["macros"]
 
 [package]
 name = "strawberry_fields"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Consume, read, and mutate struct fields with an iterator-like api."
 license = "MIT"
@@ -12,7 +12,7 @@ categories = ["data-structures"]
 keywords = ["fields", "iteration"]
 
 [dependencies]
-strawberry_fields_macros = {path = "macros", version = "0.1.0"}
+strawberry_fields_macros = {path = "macros", version = "0.1.1"}
 
 [dev-dependencies]
 trybuild = "1.0.96"
