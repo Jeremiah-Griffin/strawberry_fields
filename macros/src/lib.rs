@@ -138,7 +138,7 @@ struct VariantsInput{
 
 impl VariantsInput{
 
-    fn validate(input: TokenStream) -> Self{
+    fn validate(input: TokenStream, variant_count: usize) -> Self{
         let pairs: VariantsInput = parse(input).expect("Expected list of tuples.");
             
 
@@ -146,14 +146,44 @@ impl VariantsInput{
 
             let element_string = e.to_token_stream().to_string();
 
-            let tuple_pair_count = e.elems.len();
+            let length = e.elems.len();
 
-            if tuple_pair_count != 2 {
-                panic!("All elements should have a length of 2 ( a key and a value) but {element_string} is {tuple_pair_count}")
-            }            
-            
+
+        if length != 3{
+
+        let element_or_elements =  match length == 1{
+            true => "element",
+            false => "elements",
+        };
+
+                
+            panic!("
+                    Expected a tuple of the variant name, the function to be tested, and the expression to be matched against. Found {length} {element_or_elements} instead.\n 
+                    The broken input is {element_string}.
+                    ")
+        }
         
         };
+
+        let input_test_length = pairs.list.len();
+
+            if input_test_length  != variant_count{
+
+                let item_or_items = match input_test_length  == 1{
+                    true => "item",
+                    false => "items",
+                };
+
+                let variant_or_variants = match variant_count == 1{
+                    true => "variant",
+                    false => "variants",
+                };
+
+                
+                panic!("{input_test_length } {item_or_items} were supplied but the enum has {variant_count} {variant_or_variants}")
+            }
+
+        
         pairs    
     }
 
@@ -165,42 +195,52 @@ impl Parse for VariantsInput{
     }
 }
 
+///Maybe the API shoukd be the num variant, a function name which consumes the variant, and a pattern , that if matched, returns successfully.
+///Also have a variant that should fail when matching that pattern.
+///So far as importing the tested function is concerned, the function must be available in the parent scope of 
+///the module this macro generates. This is because we import the function from super.
+///
+///TODO: For associated functions (on the enum itself) we should be able to skip this generation if the root of the path is either `Self` or the enum name.
+///TODO: How do we make methods testable? Maybe just not concern ourselves with that and instead methods can be a wrapper of a function. Idk. 
+
 #[proc_macro_attribute]
 ///TODO: take a name for each function testing an enum variant
 ///TODO: take 
 pub fn test_variants_eq(pairs: TokenStream, item: TokenStream) -> TokenStream {
-    let pairs = VariantsInput::validate(pairs);
-
-    let mut variant_names = Vec::with_capacity(pairs.list.len());
-    let mut test_expressions = Vec::with_capacity(pairs.list.len());
-
-    for elem in pairs.list.into_iter().map(|e| e.elems){
-        let length = elem.len();
-        if length != 2{
-            panic!("expected a tuple of the variant name and the expression to be tested. Found a different number of {length} elements instead.")
-        }
-        //length is checked above to be two, so these unwraps should never panic.
-        variant_names.push(elem.first().unwrap().clone());
-        test_expressions.push(elem.last().unwrap().clone());
-    }
 
     let enum_definition = parse::<ItemEnum>(item).expect("test_for_variants may only be used with enums.");
 
-    let enum_name = enum_definition.ident.clone();
+    
+    let pairs = VariantsInput::validate(pairs, enum_definition.clone().variants.len());
 
+    let pairs_length = pairs.list.len();
+    let mut variant_names = Vec::with_capacity(pairs_length);
+    let mut tested_functions = Vec::with_capacity(pairs_length);
+    let mut expected_values = Vec::with_capacity(pairs_length);
+
+    for elem in pairs.list.into_iter().map(|e| e.elems){
+        let mut elem = elem.into_iter();
+        variant_names.push(elem.next().unwrap());
+        tested_functions.push(elem.next().unwrap());
+        expected_values.push(elem.next().unwrap());
+    }
+
+    let enum_name = enum_definition.ident.clone();
     //We add some randomness to the test module name so that users can generate mulitple sets of tests for the same enum.
-    let module_name = Ident::new(format!("strawberry_fields_generated_variants_test_insert_name_here").as_str(), Span::call_site().into());
+    let module_name = Ident::new("strawberry_fields_generated_variants_test_insert_name_here", Span::call_site().into());
 
     quote!{
-
         #enum_definition
 
-        
+        //allowed because either rustc thinks that when we pass in an enum variant to the macro it's a function. No clue really why.
+        #[allow(non_snake_case)]
         #[cfg(test)]
         mod #module_name{
+            use super::*;
             #(
+                #[test]
                 fn #variant_names(){
-                    assert_eq!(super::#enum_name::#variant_names, #test_expressions);                
+                    assert_eq!(#tested_functions(#enum_name::#variant_names), #expected_values);
                 }
             )*
         }    
