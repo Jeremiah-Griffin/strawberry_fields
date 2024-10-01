@@ -1,13 +1,15 @@
 mod test {}
 use proc_macro::TokenStream;
+use quote::{format_ident, quote, ToTokens};
 use syn::{
     bracketed, parse,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     token::{Bracket, Comma},
-    Expr, Ident, Token,
+    Expr, Ident, ItemEnum, Token,
 };
 
+#[allow(dead_code)]
 pub struct TestExpression {
     pub input: Expr,
     pub fat_arrow: Token![=>],
@@ -24,6 +26,7 @@ impl Parse for TestExpression {
     }
 }
 
+#[allow(dead_code)]
 pub struct VariantsInput {
     pub module_name: Ident,
     pub module_separator: Token![,],
@@ -34,26 +37,67 @@ pub struct VariantsInput {
 }
 
 impl VariantsInput {
-    pub fn validate(input: TokenStream, variant_count: usize) -> Self {
+    fn validate(input: TokenStream, definition: &ItemEnum) -> Self {
         let input: VariantsInput = parse(input).expect("Failed to parse");
-
-        let input_test_length = input.list.len();
-
-        if input_test_length != variant_count {
-            let item_or_items = match input_test_length == 1 {
-                true => "item",
-                false => "items",
+        let variant_count = definition.variants.len();
+        let length = input.list.len();
+        if length != variant_count {
+            let (item_or_items, were_or_was, variant_or_variants) = match length == 1 {
+                true => ("item", "was", "variant"),
+                false => ("items", "were", "variants"),
             };
-
-            let variant_or_variants = match variant_count == 1 {
-                true => "variant",
-                false => "variants",
-            };
-
-            panic!("{input_test_length } {item_or_items} were supplied but the enum has {variant_count} {variant_or_variants}")
+            panic!("{length} {item_or_items} {were_or_was} supplied but the enum has {variant_count} {variant_or_variants}")
         }
-
         input
+    }
+
+    ///Common functionality between the eq and neq tests
+    pub fn parse_for_equality(
+        input: TokenStream,
+        item: TokenStream,
+        assertion: Assertion,
+    ) -> TokenStream {
+        let enum_definition =
+            parse::<ItemEnum>(item).expect("test_for_variants may only be used with enums.");
+
+        let variants_input = VariantsInput::validate(input, &enum_definition);
+
+        let pairs_length = variants_input.list.len();
+        let tested_function = variants_input.function_name;
+
+        let mut variant_names = Vec::with_capacity(pairs_length);
+        let mut test_names = Vec::with_capacity(pairs_length);
+        let mut expected_values = Vec::with_capacity(pairs_length);
+
+        for elem in variants_input.list.into_iter() {
+            let variant_name_string = elem.input.clone().to_token_stream().to_string();
+            let tested_function = tested_function.clone();
+
+            test_names.push(format_ident!("{tested_function}_{variant_name_string}"));
+            variant_names.push(elem.input);
+            expected_values.push(elem.pattern);
+        }
+        let enum_name = enum_definition.ident.clone();
+        //We add some randomness to the test module name so that users can generate mulitple sets of tests for the same enum.
+        let module = variants_input.module_name;
+
+        quote! {
+            #enum_definition
+
+            ///this generates non snake case test names. I could write formatting to conver it but, like, why?
+            #[allow(non_snake_case)]
+            #[cfg(test)]
+            mod #module{
+                use super::*;
+                #(
+                    #[test]
+                    fn #test_names(){
+                        #assertion(#tested_function(#enum_name::#variant_names), #expected_values);
+                    }
+                )*
+            }
+        }
+        .into()
     }
 }
 
@@ -69,5 +113,19 @@ impl Parse for VariantsInput {
             list_brackets: bracketed!(list_buffer in input),
             list: Punctuated::parse_terminated(&list_buffer).expect("Parsing list failed"),
         })
+    }
+}
+
+pub enum Assertion {
+    Eq,
+    Ne,
+}
+
+impl ToTokens for Assertion {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        match self {
+            Assertion::Eq => tokens.extend(quote! {assert_eq!}),
+            Assertion::Ne => tokens.extend(quote! {assert_ne!}),
+        }
     }
 }
