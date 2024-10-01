@@ -1,6 +1,9 @@
 use proc_macro::{Span, TokenStream};
-use quote::{quote, ToTokens};
-use syn::{parse::Parse, parse, punctuated::Punctuated, ExprTuple, Ident, ItemEnum, ItemStruct, Token, Type};
+use quote::quote;
+use syn::{parse, Ident, ItemEnum, ItemStruct, Type};
+use types::VariantsInput;
+
+mod types;
 
 #[proc_macro_attribute]
 ///Generates an implementation for `StrawberryFields` in a safe way that is guaranteed to 
@@ -130,70 +133,6 @@ pub fn strawberry_fields(type_parameter: TokenStream, input: TokenStream) -> Tok
     .into()
 }
 
-struct VariantsInput{
-    ///Element 0 is a the bare variant name (no qualified path)
-    ///Element 1 is the expression we're going to be matching against. 
-    list: Punctuated<ExprTuple, Token![,]>,
-}
-
-impl VariantsInput{
-
-    fn validate(input: TokenStream, variant_count: usize) -> Self{
-        let pairs: VariantsInput = parse(input).expect("Expected list of tuples.");
-            
-
-        for e in pairs.list.iter(){
-
-            let element_string = e.to_token_stream().to_string();
-
-            let length = e.elems.len();
-
-
-        if length != 3{
-
-        let element_or_elements =  match length == 1{
-            true => "element",
-            false => "elements",
-        };
-
-                
-            panic!("
-                    Expected a tuple of the variant name, the function to be tested, and the expression to be matched against. Found {length} {element_or_elements} instead.\n 
-                    The broken input is {element_string}.
-                    ")
-        }
-        
-        };
-
-        let input_test_length = pairs.list.len();
-
-            if input_test_length  != variant_count{
-
-                let item_or_items = match input_test_length  == 1{
-                    true => "item",
-                    false => "items",
-                };
-
-                let variant_or_variants = match variant_count == 1{
-                    true => "variant",
-                    false => "variants",
-                };
-
-                
-                panic!("{input_test_length } {item_or_items} were supplied but the enum has {variant_count} {variant_or_variants}")
-            }
-
-        
-        pairs    
-    }
-
-}
-
-impl Parse for VariantsInput{
-    fn parse(input: parse::ParseStream) -> syn::Result<Self> {
-        Punctuated::parse_terminated(input).map(|list| Self{list})        
-    }
-}
 
 ///Maybe the API shoukd be the num variant, a function name which consumes the variant, and a pattern , that if matched, returns successfully.
 ///Also have a variant that should fail when matching that pattern.
@@ -213,36 +152,37 @@ pub fn test_variants_eq(pairs: TokenStream, item: TokenStream) -> TokenStream {
     
     let pairs = VariantsInput::validate(pairs, enum_definition.clone().variants.len());
 
+/*
     let pairs_length = pairs.list.len();
     let mut variant_names = Vec::with_capacity(pairs_length);
-    let mut tested_functions = Vec::with_capacity(pairs_length);
     let mut expected_values = Vec::with_capacity(pairs_length);
 
-    for elem in pairs.list.into_iter().map(|e| e.elems){
-        let mut elem = elem.into_iter();
-        variant_names.push(elem.next().unwrap());
-        tested_functions.push(elem.next().unwrap());
-        expected_values.push(elem.next().unwrap());
+    for elem in pairs.list.into_iter(){
+        variant_names.push(elem.input);
+        expected_values.push(elem.pattern);
     }
-
+*/
     let enum_name = enum_definition.ident.clone();
     //We add some randomness to the test module name so that users can generate mulitple sets of tests for the same enum.
-    let module_name = Ident::new("strawberry_fields_generated_variants_test_insert_name_here", Span::call_site().into());
+    let module_name = pairs.module_name;
+    let function_name = pairs.function_name;
 
     quote!{
         #enum_definition
 
         //allowed because either rustc thinks that when we pass in an enum variant to the macro it's a function. No clue really why.
         #[allow(non_snake_case)]
-        #[cfg(test)]
+        //#[cfg(test)]
         mod #module_name{
             use super::*;
+            /*
             #(
                 #[test]
                 fn #variant_names(){
-                    assert_eq!(#tested_functions(#enum_name::#variant_names), #expected_values);
+                    assert_eq!(#function_name(#enum_name::#variant_names), #expected_values);
                 }
             )*
+            */
         }    
     }.into()    
 }
