@@ -9,6 +9,13 @@ fn convert(value: YooEight) -> YooSixteen {
     }
 }
 
+impl From<YooEight> for YooSixteen {
+    fn from(value: YooEight) -> Self {
+      convert(value)
+    }
+}
+
+
 #[derive(Debug, PartialEq, Eq)]
 #[
     test_variants_eq {
@@ -22,7 +29,7 @@ fn convert(value: YooEight) -> YooSixteen {
                 OneHundred => YooSixteen::OneHundred,
             ]
         }
- ]
+]
 
 
 #[
@@ -37,10 +44,36 @@ fn convert(value: YooEight) -> YooSixteen {
                 OneHundred => YooSixteen::Zero,
             ]
         }
- ]
+]
 
-
-     
+//mostly useful to ensure that associated/trait methods are parsed correctly by the macro
+#[
+    test_variants_eq{
+        module: test_convert_eq_from, 
+        function: YooSixteen::from, 
+        matches: 
+            [
+                Zero => convert(YooEight::Zero),
+                One => convert(YooEight::One),
+                Ten => convert(YooEight::Ten),
+                OneHundred => convert(YooEight::OneHundred),
+            ]
+        }
+]
+//mostly useful to ensure that associated/trait methods are parsed correctly by the macro
+#[
+    test_variants_ne{
+        module: test_convert_ne_from, 
+        function: YooSixteen::from, 
+        matches: 
+            [
+                Zero => convert(YooEight::OneHundred),
+                One => convert(YooEight::Ten),
+                Ten => convert(YooEight::One),
+                OneHundred => convert(YooEight::Zero),
+            ]
+        }
+]    
 enum YooEight {
     Zero = 0,
     One = 1,
@@ -83,19 +116,6 @@ enum YooSixteen {
     Ten = 10,
     OneHundred = 100,
 }
-
-impl From<YooEight> for YooSixteen {
-    fn from(value: YooEight) -> Self {
-        match value {
-            YooEight::Zero => YooSixteen::Zero,
-            YooEight::One => YooSixteen::One,
-            YooEight::Ten => YooSixteen::Ten,
-            YooEight::OneHundred => YooSixteen::OneHundred,
-        }
-    }
-}
-
-
 
 fn convert_number_or_not(something: YooSixteen) -> Option<u64>{
     Some(something as u64)

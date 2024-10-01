@@ -5,7 +5,7 @@ use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     token::{Bracket, Colon, Comma},
-    Expr, Ident, ItemEnum, Token,
+    Expr, Ident, ItemEnum, Path, Token,
 };
 
 mod kw {
@@ -40,7 +40,8 @@ pub struct VariantsInput {
     pub module_separator: Token![,],
     pub function_field: kw::function,
     pub function_colon: Token![:],
-    pub function_name: Ident,
+    //using a path rather than an ident is useful for testing associated functions and trait impls.
+    pub function_name: Path,
     pub function_separator: Token![,],
     pub matches_field: kw::matches,
     pub matches_colon: Token![:],
@@ -83,7 +84,13 @@ impl VariantsInput {
 
         for elem in variants_input.list.into_iter() {
             let variant_name_string = elem.input.clone().to_token_stream().to_string();
-            let tested_function = tested_function.clone();
+            let tested_function = tested_function
+                .clone()
+                .segments
+                .last()
+                .expect("The function (or path) does not have a final segment as expected.")
+                .ident
+                .clone();
 
             test_names.push(format_ident!("{tested_function}_{variant_name_string}"));
             variant_names.push(elem.input);
@@ -126,7 +133,7 @@ impl Parse for VariantsInput {
             function_field: kw::function::parse(input).expect("expected \"function\" field first"),
             function_colon: Colon::parse(input)
                 .expect("expected colon between the \"function\" field and the function name"),
-            function_name: Ident::parse(input).expect("expected an ident for the function name"),
+            function_name: Path::parse(input).expect("expected an ident for the function name"),
             function_separator: Comma::parse(input).expect("expected comma after module name"),
             matches_field: kw::matches::parse(input).expect("expected \"matches\" field"),
             matches_colon: Colon::parse(input)
