@@ -23,7 +23,7 @@ mod test {
             OneHundred =>  YooSixteen::OneHundred,
         ]
     )]*/
-    #[test_variants_eq(test, convert)]
+    #[test_variants_eq(test, convert, [])]
     enum YooEight {
         Zero = 0,
         One = 1,

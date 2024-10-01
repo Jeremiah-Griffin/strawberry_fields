@@ -30,9 +30,9 @@ pub struct VariantsInput {
     pub module_name: Ident,
     pub module_separator: Token![,],
     pub function_name: Ident,
-    //pub module_separator: Token![,],
-    //pub list_brackets: Bracket,
-    //pub list: Punctuated<TestExpression, Token![,]>,
+    pub function_separator: Token![,],
+    pub list_brackets: Bracket,
+    pub list: Punctuated<TestExpression, Token![,]>,
 }
 
 impl VariantsInput {
@@ -63,13 +63,14 @@ impl VariantsInput {
 impl Parse for VariantsInput {
     #[allow(unused_variables)]
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        //let list_buffer;
+        let list_buffer;
         Ok(VariantsInput {
             module_name: Ident::parse(input).expect("expected an ident for the module name"),
             module_separator: Comma::parse(input).expect("expected comma after function name"),
             function_name: Ident::parse(input).expect("expected an ident for the function name"),
-            //module_separator: Comma::parse(input).expect("expected comma after module name"), //list_brackets: bracketed!(list_buffer in input),
-            //list: Punctuated::parse_terminated(input).expect("Parsing list failed"),
+            function_separator: Comma::parse(input).expect("expected comma after module name"), //list_brackets: bracketed!(list_buffer in input),
+            list_brackets: bracketed!(list_buffer in input),
+            list: Punctuated::parse_terminated(input).expect("Parsing list failed"),
         })
     }
 }
