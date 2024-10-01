@@ -9,7 +9,6 @@ fn convert(value: YooEight) -> YooSixteen {
     }
 }
 
-#[repr(u8)]
 #[derive(Debug, PartialEq, Eq)]
 #[test_variants_eq(test_eq_simple, convert, [
     Zero => YooSixteen::Zero,
