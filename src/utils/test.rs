@@ -1,4 +1,4 @@
-use strawberry_fields_macros::{test_variants_eq, test_variants_ne};
+use strawberry_fields_macros::{test_variants_eq, test_variants_ne, };
 
 fn convert(value: YooEight) -> YooSixteen {
     match value {
@@ -10,41 +10,37 @@ fn convert(value: YooEight) -> YooSixteen {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-#[test_variants_eq{
-    module: test_eq_simple, 
-    function: convert, 
-    matches: 
-        [
-            Zero => YooSixteen::Zero,
-            One => YooSixteen::One,
-            Ten => YooSixteen::Ten,
-            OneHundred => YooSixteen::OneHundred,
-        ]
-    }
+#[
+    test_variants_eq {
+        module: test_eq_simple, 
+        function: convert, 
+        matches: 
+            [
+                Zero => YooSixteen::Zero,
+                One => YooSixteen::One,
+                Ten => YooSixteen::Ten,
+                OneHundred => YooSixteen::OneHundred,
+            ]
+        }
  ]
 
 
-#[test_variants_ne{
-    module: test_ne_simple, 
-    function: convert, 
-    matches: 
-        [
-            Zero => YooSixteen::OneHundred,
-            One => YooSixteen::Ten,
-            Ten => YooSixteen::One,
-            OneHundred => YooSixteen::Zero,
-        ]
-    }
+#[
+    test_variants_ne {
+        module: test_ne_simple, 
+        function: convert, 
+        matches: 
+            [
+                Zero => YooSixteen::OneHundred,
+                One => YooSixteen::Ten,
+                Ten => YooSixteen::One,
+                OneHundred => YooSixteen::Zero,
+            ]
+        }
  ]
 
-/*
-#[test_variants_neq(test_neq_simple, convert, [
-    Zero => YooSixteen::OneHundred,
-    One => YooSixteen::Ten,
-    Ten => YooSixteen::One,
-    OneHundred => YooSixteen::Zero,
 
-])]*/
+     
 enum YooEight {
     Zero = 0,
     One = 1,
@@ -53,7 +49,34 @@ enum YooEight {
 }
 #[repr(u16)]
 #[derive(Debug, PartialEq, Eq)]
+#[
+    test_variants_eq {
+        module: test_eq_less_simple, 
+        function: convert_number_or_not, 
+        matches: 
+            [
+                Zero => Some(0),
+                One => Some(1),
+                Ten => Some(10),
+                OneHundred => Some(100),
+            ]
+        }
+ ]
 
+
+#[
+    test_variants_ne {
+        module: test_ne_less_simple, 
+        function: convert_number_or_not, 
+        matches: 
+            [
+                Zero => Some(100),
+                One => Some(10),
+                Ten => Some(1),
+                OneHundred => Some(0),
+            ]
+        }
+ ]
 enum YooSixteen {
     Zero = 0,
     One = 1,
@@ -71,3 +94,13 @@ impl From<YooEight> for YooSixteen {
         }
     }
 }
+
+
+
+fn convert_number_or_not(something: YooSixteen) -> Option<u64>{
+    Some(something as u64)
+}
+
+//TODO: I'd really love to get be able to do something match the same variant of an ADT with a field
+//multiple times. This would require a lot of additional work, maybe should be a different macro entirely as I coud imagine that 
+//being implicit and weird at times.
