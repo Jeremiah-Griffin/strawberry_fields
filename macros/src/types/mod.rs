@@ -1,13 +1,19 @@
-mod test {}
 use proc_macro::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 use syn::{
     bracketed, parse,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
-    token::{Bracket, Comma},
+    token::{Bracket, Colon, Comma},
     Expr, Ident, ItemEnum, Token,
 };
+
+mod kw {
+    use syn::custom_keyword;
+    custom_keyword!(module);
+    custom_keyword!(function);
+    custom_keyword!(matches);
+}
 
 #[allow(dead_code)]
 pub struct TestExpression {
@@ -28,10 +34,16 @@ impl Parse for TestExpression {
 
 #[allow(dead_code)]
 pub struct VariantsInput {
+    pub module_field: kw::module,
+    pub module_colon: Token![:],
     pub module_name: Ident,
     pub module_separator: Token![,],
+    pub function_field: kw::function,
+    pub function_colon: Token![:],
     pub function_name: Ident,
     pub function_separator: Token![,],
+    pub matches_field: kw::matches,
+    pub matches_colon: Token![:],
     pub list_brackets: Bracket,
     pub list: Punctuated<TestExpression, Token![,]>,
 }
@@ -106,10 +118,19 @@ impl Parse for VariantsInput {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let list_buffer;
         Ok(VariantsInput {
+            module_field: kw::module::parse(input).expect("expected \"module\" field first"),
+            module_colon: Colon::parse(input)
+                .expect("expected colon between the \"module\" field and the module name"),
             module_name: Ident::parse(input).expect("expected an ident for the module name"),
             module_separator: Comma::parse(input).expect("expected comma after function name"),
+            function_field: kw::function::parse(input).expect("expected \"function\" field first"),
+            function_colon: Colon::parse(input)
+                .expect("expected colon between the \"function\" field and the function name"),
             function_name: Ident::parse(input).expect("expected an ident for the function name"),
-            function_separator: Comma::parse(input).expect("expected comma after module name"), //list_brackets: bracketed!(list_buffer in input),
+            function_separator: Comma::parse(input).expect("expected comma after module name"),
+            matches_field: kw::matches::parse(input).expect("expected \"matches\" field"),
+            matches_colon: Colon::parse(input)
+                .expect("expected colon between the \"matches\" field and the list of matches"),
             list_brackets: bracketed!(list_buffer in input),
             list: Punctuated::parse_terminated(&list_buffer).expect("Parsing list failed"),
         })

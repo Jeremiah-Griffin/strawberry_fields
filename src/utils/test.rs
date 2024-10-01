@@ -1,4 +1,4 @@
-use strawberry_fields_macros::{test_variants_eq, test_variants_neq};
+use strawberry_fields_macros::{test_variants_eq, test_variants_ne};
 
 fn convert(value: YooEight) -> YooSixteen {
     match value {
@@ -10,20 +10,41 @@ fn convert(value: YooEight) -> YooSixteen {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-#[test_variants_eq(test_eq_simple, convert, [
-    Zero => YooSixteen::Zero,
-    One => YooSixteen::One,
-    Ten => YooSixteen::Ten,
-    OneHundred => YooSixteen::OneHundred,
+#[test_variants_eq{
+    module: test_eq_simple, 
+    function: convert, 
+    matches: 
+        [
+            Zero => YooSixteen::Zero,
+            One => YooSixteen::One,
+            Ten => YooSixteen::Ten,
+            OneHundred => YooSixteen::OneHundred,
+        ]
+    }
+ ]
 
-])]
+
+#[test_variants_ne{
+    module: test_ne_simple, 
+    function: convert, 
+    matches: 
+        [
+            Zero => YooSixteen::OneHundred,
+            One => YooSixteen::Ten,
+            Ten => YooSixteen::One,
+            OneHundred => YooSixteen::Zero,
+        ]
+    }
+ ]
+
+/*
 #[test_variants_neq(test_neq_simple, convert, [
     Zero => YooSixteen::OneHundred,
     One => YooSixteen::Ten,
     Ten => YooSixteen::One,
     OneHundred => YooSixteen::Zero,
 
-])]
+])]*/
 enum YooEight {
     Zero = 0,
     One = 1,

@@ -151,6 +151,6 @@ pub fn test_variants_eq(input: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 ///Tests that *all* variants do not equal the corresponding pattern.
-pub fn test_variants_neq(input: TokenStream, item: TokenStream) -> TokenStream {
+pub fn test_variants_ne(input: TokenStream, item: TokenStream) -> TokenStream {
     VariantsInput::parse_for_equality(input, item, Assertion::Ne)
 }
