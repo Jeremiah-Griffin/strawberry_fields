@@ -1,4 +1,4 @@
-//#[cfg(test)]
+#[cfg(test)]
 mod test {
     use strawberry_fields_macros::test_variants_eq;
 
@@ -13,17 +13,13 @@ mod test {
 
     #[repr(u8)]
     #[derive(Debug, PartialEq, Eq)]
-    /*
-    #[test_variants_eq(
-        convert,
-        [
-            Zero =>  YooSixteen::Zero,
-            One =>  YooSixteen::One,
-            Ten =>  YooSixteen::Ten,
-            OneHundred =>  YooSixteen::OneHundred,
-        ]
-    )]*/
-    #[test_variants_eq(test, convert, [])]
+    #[test_variants_eq(test, convert, [
+        Zero => YooSixteen::Zero,
+        One => YooSixteen::One,
+        Ten => YooSixteen::Ten,
+        OneHundred => YooSixteen::OneHundred,
+    
+    ])]
     enum YooEight {
         Zero = 0,
         One = 1,

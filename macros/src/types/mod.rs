@@ -5,23 +5,21 @@ use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     token::{Bracket, Comma},
-    Expr, Ident, Pat, Token,
+    Expr, Ident, Token,
 };
 
 pub struct TestExpression {
-    pub input: Pat,
+    pub input: Expr,
     pub fat_arrow: Token![=>],
     pub pattern: Expr,
-    pub comma: Token![,],
 }
 
 impl Parse for TestExpression {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Ok(Self {
-            input: Pat::parse_single(input).expect("could not parse input pattern"),
+            input: Expr::parse(input).expect("could not parse input pattern"),
             fat_arrow: <Token![=>]>::parse(input)?,
             pattern: Expr::parse(input)?,
-            comma: Comma::parse(input)?,
         })
     }
 }
@@ -39,7 +37,6 @@ impl VariantsInput {
     pub fn validate(input: TokenStream, variant_count: usize) -> Self {
         let input: VariantsInput = parse(input).expect("Failed to parse");
 
-        /*
         let input_test_length = input.list.len();
 
         if input_test_length != variant_count {
@@ -54,7 +51,7 @@ impl VariantsInput {
             };
 
             panic!("{input_test_length } {item_or_items} were supplied but the enum has {variant_count} {variant_or_variants}")
-        }*/
+        }
 
         input
     }
@@ -70,7 +67,7 @@ impl Parse for VariantsInput {
             function_name: Ident::parse(input).expect("expected an ident for the function name"),
             function_separator: Comma::parse(input).expect("expected comma after module name"), //list_brackets: bracketed!(list_buffer in input),
             list_brackets: bracketed!(list_buffer in input),
-            list: Punctuated::parse_terminated(input).expect("Parsing list failed"),
+            list: Punctuated::parse_terminated(&list_buffer).expect("Parsing list failed"),
         })
     }
 }

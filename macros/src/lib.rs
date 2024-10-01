@@ -1,5 +1,5 @@
 use proc_macro::{Span, TokenStream};
-use quote::quote;
+use quote::{format_ident, quote, ToTokens};
 use syn::{parse, Ident, ItemEnum, ItemStruct, Type};
 use types::VariantsInput;
 
@@ -152,37 +152,44 @@ pub fn test_variants_eq(pairs: TokenStream, item: TokenStream) -> TokenStream {
     
     let pairs = VariantsInput::validate(pairs, enum_definition.clone().variants.len());
 
-/*
     let pairs_length = pairs.list.len();
+    let tested_function = pairs.function_name;
+    
     let mut variant_names = Vec::with_capacity(pairs_length);
+    let mut test_names = Vec::with_capacity(pairs_length);
     let mut expected_values = Vec::with_capacity(pairs_length);
 
     for elem in pairs.list.into_iter(){
+        let variant_name_string = elem.input.clone().to_token_stream().to_string();
+        let tested_function_clone = tested_function.clone();
+
+        
+        test_names.push(format_ident!("{tested_function_clone}_{variant_name_string}"));
         variant_names.push(elem.input);
         expected_values.push(elem.pattern);
     }
-*/
     let enum_name = enum_definition.ident.clone();
     //We add some randomness to the test module name so that users can generate mulitple sets of tests for the same enum.
-    let module_name = pairs.module_name;
-    let function_name = pairs.function_name;
+    let module = pairs.module_name;
+
+
+
+
 
     quote!{
         #enum_definition
 
         //allowed because either rustc thinks that when we pass in an enum variant to the macro it's a function. No clue really why.
         #[allow(non_snake_case)]
-        //#[cfg(test)]
-        mod #module_name{
+        #[cfg(test)]
+        mod #module{
             use super::*;
-            /*
             #(
                 #[test]
-                fn #variant_names(){
-                    assert_eq!(#function_name(#enum_name::#variant_names), #expected_values);
+                fn #test_names(){
+                    assert_eq!(#tested_function(#enum_name::#variant_names), #expected_values);
                 }
             )*
-            */
         }    
     }.into()    
 }
