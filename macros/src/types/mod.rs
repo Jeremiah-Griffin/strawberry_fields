@@ -4,8 +4,8 @@ use syn::{
     bracketed, parse,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
-    token::{Bracket, Colon, Comma},
-    Expr, Ident, ItemEnum, Path, Token,
+    token::{Bracket, Colon, Comma, PathSep},
+    Expr, ExprReference, Ident, ItemEnum, Path, Token,
 };
 
 mod kw {
@@ -15,9 +15,34 @@ mod kw {
     custom_keyword!(matches);
 }
 
+#[derive(Clone)]
+pub enum ExprOrReference {
+    Expression(Expr),
+    Reference(ExprReference),
+}
+
+impl Parse for ExprOrReference {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        match input.fork().parse::<ExprReference>().is_ok() {
+            true => ExprReference::parse(input).map(|r| Self::Reference(r)),
+            false => Expr::parse(input).map(|e| Self::Expression(e)),
+        }
+    }
+}
+
+impl ExprOrReference {
+    fn expression_without_reference(&self) -> &Expr {
+        match self {
+            ExprOrReference::Expression(expr) => expr,
+            ExprOrReference::Reference(expr_reference) => expr_reference.expr.as_ref(),
+        }
+    }
+}
+
 #[allow(dead_code)]
 pub struct TestExpression {
-    pub input: Expr,
+    //Optional as references are only needed if the type signature of the function needs it.
+    pub input: ExprOrReference,
     pub fat_arrow: Token![=>],
     pub pattern: Expr,
 }
@@ -25,7 +50,7 @@ pub struct TestExpression {
 impl Parse for TestExpression {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Ok(Self {
-            input: Expr::parse(input).expect("could not parse input pattern"),
+            input: ExprOrReference::parse(input).expect("could not parse input pattern"),
             fat_arrow: <Token![=>]>::parse(input)?,
             pattern: Expr::parse(input)?,
         })
@@ -78,12 +103,21 @@ impl VariantsInput {
         let pairs_length = variants_input.list.len();
         let tested_function = variants_input.function_name;
 
-        let mut variant_names = Vec::with_capacity(pairs_length);
+        //the variants which will be tested
+
+        //TODO: This is beyond horrible. Collect this into a single vector of a T that implements to tokens
+        let mut variant_names: Vec<proc_macro2::TokenStream> = Vec::with_capacity(pairs_length);
+        //names generated from the function name and the variant tame which will be given to each test case
         let mut test_names = Vec::with_capacity(pairs_length);
+        //The patterns to be matched
         let mut expected_values = Vec::with_capacity(pairs_length);
 
         for elem in variants_input.list.into_iter() {
-            let variant_name_string = elem.input.clone().to_token_stream().to_string();
+            let variant_name_string = elem
+                .input
+                .expression_without_reference()
+                .to_token_stream()
+                .to_string();
             let tested_function = tested_function
                 .clone()
                 .segments
@@ -93,25 +127,49 @@ impl VariantsInput {
                 .clone();
 
             test_names.push(format_ident!("{tested_function}_{variant_name_string}"));
-            variant_names.push(elem.input);
+            //let enum_name = enum_definition.ident;
+
+            //let mut t = proc_macro2::TokenStream::new();
+
+            //this is to support moving around "&" and "&mut" into the correct plae in the steam.
+            match elem.input {
+                ExprOrReference::Expression(expr) => {
+                    let mut t = proc_macro2::TokenStream::new();
+                    enum_definition.ident.to_tokens(&mut t);
+                    PathSep::default().to_tokens(&mut t);
+                    expr.to_tokens(&mut t);
+                    variant_names.push(t);
+                }
+                ExprOrReference::Reference(r) => {
+                    let mut t = proc_macro2::TokenStream::new();
+                    r.and_token.to_tokens(&mut t);
+                    if let Some(mutability) = r.mutability {
+                        mutability.to_tokens(&mut t);
+                    }
+                    enum_definition.ident.to_tokens(&mut t);
+                    PathSep::default().to_tokens(&mut t);
+                    r.expr.to_tokens(&mut t);
+                    variant_names.push(t);
+                }
+            }
+
             expected_values.push(elem.pattern);
         }
-        let enum_name = enum_definition.ident.clone();
         //We add some randomness to the test module name so that users can generate mulitple sets of tests for the same enum.
         let module = variants_input.module_name;
 
         quote! {
             #enum_definition
 
-            ///this generates non snake case test names. I could write formatting to conver it but, like, why?
             #[allow(non_snake_case)]
             #[cfg(test)]
             mod #module{
+                //allows paths relative to parent
                 use super::*;
                 #(
                     #[test]
                     fn #test_names(){
-                        #assertion(#tested_function(#enum_name::#variant_names), #expected_values);
+                        #assertion(#tested_function(#variant_names), #expected_values);
                     }
                 )*
             }

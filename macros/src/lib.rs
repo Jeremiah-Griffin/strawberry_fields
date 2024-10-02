@@ -1,6 +1,6 @@
-use proc_macro::{Span, TokenStream};
-use quote::{format_ident, quote, ToTokens};
-use syn::{parse, Ident, ItemEnum, ItemStruct, Type};
+use proc_macro::TokenStream;
+use quote::quote;
+use syn::{parse, Ident, ItemStruct, Type};
 use types::{Assertion, VariantsInput};
 
 mod types;
