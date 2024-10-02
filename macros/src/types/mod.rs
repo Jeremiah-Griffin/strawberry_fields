@@ -108,49 +108,67 @@ impl VariantsInput {
         //TODO: This is beyond horrible. Collect this into a single vector of a T that implements to tokens
         let mut variant_names: Vec<proc_macro2::TokenStream> = Vec::with_capacity(pairs_length);
         //names generated from the function name and the variant tame which will be given to each test case
-        let mut test_names = Vec::with_capacity(pairs_length);
+        let mut test_names: Vec<Ident> = Vec::with_capacity(pairs_length);
         //The patterns to be matched
         let mut expected_values = Vec::with_capacity(pairs_length);
 
         for elem in variants_input.list.into_iter() {
-            let variant_name_string = elem
-                .input
-                .expression_without_reference()
-                .to_token_stream()
-                .to_string();
-            let tested_function = tested_function
-                .clone()
-                .segments
-                .last()
-                .expect("The function (or path) does not have a final segment as expected.")
-                .ident
-                .clone();
+            //generate test function names.
+            {
+                let variant_name_string = elem
+                    .input
+                    .expression_without_reference()
+                    .to_token_stream()
+                    .to_string();
+                let tested_function = tested_function
+                    .clone()
+                    .segments
+                    .last()
+                    .expect("The function (or path) does not have a final segment as expected.")
+                    .ident
+                    .clone();
 
-            test_names.push(format_ident!("{tested_function}_{variant_name_string}"));
-            //let enum_name = enum_definition.ident;
+                test_names.push(format_ident!("{tested_function}_{variant_name_string}"));
+            }
 
-            //let mut t = proc_macro2::TokenStream::new();
+            /*
+            I really prefer this but cant get it to build and dont really know why
 
-            //this is to support moving around "&" and "&mut" into the correct plae in the steam.
-            match elem.input {
-                ExprOrReference::Expression(expr) => {
-                    let mut t = proc_macro2::TokenStream::new();
-                    enum_definition.ident.to_tokens(&mut t);
-                    PathSep::default().to_tokens(&mut t);
-                    expr.to_tokens(&mut t);
-                    variant_names.push(t);
-                }
-                ExprOrReference::Reference(r) => {
-                    let mut t = proc_macro2::TokenStream::new();
-                    r.and_token.to_tokens(&mut t);
+            {
+                let mut test_name = proc_macro2::TokenStream::new();
+
+                elem.input
+                    .expression_without_reference()
+                    .to_tokens(&mut test_name);
+                tested_function
+                    .segments
+                    .last()
+                    .expect("The function (or path) does not have a final segment as expected.")
+                    .ident
+                    .to_tokens(&mut test_name);
+                test_names.push(test_name);
+            }
+            */
+
+            //format variant name from &Variant to &Fully::Qualified::Path::To::Variant
+            {
+                let mut variant_name = proc_macro2::TokenStream::new();
+
+                let input_variant_expression = &elem.input;
+
+                if let ExprOrReference::Reference(r) = input_variant_expression {
+                    r.and_token.to_tokens(&mut variant_name);
                     if let Some(mutability) = r.mutability {
-                        mutability.to_tokens(&mut t);
+                        mutability.to_tokens(&mut variant_name);
                     }
-                    enum_definition.ident.to_tokens(&mut t);
-                    PathSep::default().to_tokens(&mut t);
-                    r.expr.to_tokens(&mut t);
-                    variant_names.push(t);
                 }
+
+                enum_definition.ident.to_tokens(&mut variant_name);
+                PathSep::default().to_tokens(&mut variant_name);
+                input_variant_expression
+                    .expression_without_reference()
+                    .to_tokens(&mut variant_name);
+                variant_names.push(variant_name);
             }
 
             expected_values.push(elem.pattern);

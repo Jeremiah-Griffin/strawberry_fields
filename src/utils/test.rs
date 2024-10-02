@@ -135,7 +135,6 @@ fn convert_number_or_not(something: YooSixteen) -> Option<u64>{
         &mut Second => ReferenceTester::First,
     ]
 }]
-
 enum ReferenceTester{
     First,
     Second,
