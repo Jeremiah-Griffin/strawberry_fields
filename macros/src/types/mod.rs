@@ -7,7 +7,6 @@ use syn::{
     token::{Bracket, Colon, Comma, PathSep},
     Expr, ExprReference, Ident, ItemEnum, Path, Token,
 };
-
 mod kw {
     use syn::custom_keyword;
     custom_keyword!(module);
@@ -115,11 +114,26 @@ impl VariantsInput {
         for elem in variants_input.list.into_iter() {
             //generate test function names.
             {
+                /*
                 let variant_name_string = elem
                     .input
                     .expression_without_reference()
                     .to_token_stream()
                     .to_string();
+                    */
+
+                let variant_name_string = elem
+                    .input
+                    .expression_without_reference()
+                    .to_token_stream()
+                    .to_string()
+                    //If a variant input does not have fields this will consume the entire variant input.
+                    //However, if it has fields (either within parenthesis or brackets) this will short circuit consuming only
+                    //the variant name.
+                    .chars()
+                    .take_while(|g| !g.is_whitespace() && *g != '(' && *g != '{')
+                    .collect::<String>();
+
                 let tested_function = tested_function
                     .clone()
                     .segments
@@ -127,6 +141,8 @@ impl VariantsInput {
                     .expect("The function (or path) does not have a final segment as expected.")
                     .ident
                     .clone();
+
+                //THIS IS WEAR INVALID IDENT ERROR IS THROWN
 
                 test_names.push(format_ident!("{tested_function}_{variant_name_string}"));
             }
@@ -173,7 +189,6 @@ impl VariantsInput {
 
             expected_values.push(elem.pattern);
         }
-        //We add some randomness to the test module name so that users can generate mulitple sets of tests for the same enum.
         let module = variants_input.module_name;
 
         quote! {

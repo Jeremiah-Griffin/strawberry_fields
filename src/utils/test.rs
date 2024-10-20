@@ -18,7 +18,7 @@ impl From<YooEight> for YooSixteen {
 
 #[derive(Debug, PartialEq, Eq)]
 #[test_variants_eq {
-    module: test_eq_simple, 
+    module: eq_simple, 
     function: convert, 
     matches:[
         Zero => YooSixteen::Zero,
@@ -30,7 +30,7 @@ impl From<YooEight> for YooSixteen {
 
 
 #[test_variants_ne {
-    module: test_ne_simple, 
+    module: ne_simple, 
     function: convert, 
     matches: [
         Zero => YooSixteen::OneHundred,
@@ -42,7 +42,7 @@ impl From<YooEight> for YooSixteen {
 
 //mostly useful to ensure that associated/trait methods are parsed correctly by the macro
 #[test_variants_eq{
-    module: test_convert_eq_from, 
+    module: onvert_eq_from, 
     function: YooSixteen::from, 
     matches: [
         Zero => convert(YooEight::Zero),
@@ -53,7 +53,7 @@ impl From<YooEight> for YooSixteen {
 }]
 //mostly useful to ensure that associated/trait methods are parsed correctly by the macro
 #[test_variants_ne{
-    module: test_convert_ne_from, 
+    module: convert_ne_from, 
     function: YooSixteen::from, 
     matches: [
         Zero => convert(YooEight::OneHundred),
@@ -71,7 +71,7 @@ enum YooEight {
 #[repr(u16)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[test_variants_eq {
-    module: test_eq_less_simple, 
+    module: eq_less_simple, 
     function: convert_number_or_not, 
     matches: [
         Zero => Some(0),
@@ -81,7 +81,7 @@ enum YooEight {
     ]
 }]
 #[test_variants_ne {
-    module: test_ne_less_simple, 
+    module: ne_less_simple, 
     function: convert_number_or_not, 
     matches: [
         Zero => Some(100),
@@ -104,7 +104,7 @@ fn convert_number_or_not(something: YooSixteen) -> Option<u64>{
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 #[test_variants_eq{
-    module: test_ref_eq,
+    module: ref_eq,
     function: ReferenceTester::test_ref,
     matches: [
         &First => ReferenceTester::First,
@@ -112,7 +112,7 @@ fn convert_number_or_not(something: YooSixteen) -> Option<u64>{
     ]
 }]
 #[test_variants_eq{
-    module: test_mut_ref_eq,
+    module: mut_ref_eq,
     function: ReferenceTester::test_mut_ref,
     matches: [
         &mut First => ReferenceTester::First,
@@ -120,7 +120,7 @@ fn convert_number_or_not(something: YooSixteen) -> Option<u64>{
     ]
 }]
 #[test_variants_ne{
-    module: test_ref_ne,
+    module: ref_ne,
     function: ReferenceTester::test_ref,
     matches: [
         &First => ReferenceTester::Second,
@@ -128,7 +128,7 @@ fn convert_number_or_not(something: YooSixteen) -> Option<u64>{
     ]
 }]
 #[test_variants_ne{
-    module: test_mut_ref_ne,
+    module: mut_ref_ne,
     function: ReferenceTester::test_mut_ref,
     matches: [
         &mut First => ReferenceTester::Second,
@@ -147,6 +147,44 @@ impl ReferenceTester{
 
     fn test_mut_ref(&mut self) -> ReferenceTester{
         self.clone()
+    }
+
+}
+
+
+#[test_variants_eq{
+    module: with_fields_eq,
+    function: HasFields::number,
+     matches: [
+         Zero => 0,
+         Named{a: 10} => 10,
+         Unnamed(100) => 100,
+     ]   
+}]
+
+#[test_variants_ne{
+    module: enum_with_fields_ne,
+    function: HasFields::number,
+     matches: [
+         Zero => 42,
+         Named{a: 10} => 42,
+         Unnamed(100) => 42,
+     ]   
+}]
+enum HasFields{
+    Zero,
+    Named{a: u8},
+    Unnamed(u8),    
+}
+
+impl HasFields{
+    fn number(self) -> u8{
+        match self{
+            HasFields::Zero => 0,
+            HasFields::Named { a } => a,
+            HasFields::Unnamed(a) => a,
+        }
+    
     }
 
 }
