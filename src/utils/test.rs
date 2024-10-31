@@ -153,7 +153,7 @@ impl ReferenceTester{
 
 
 #[test_variants_eq{
-    module: with_fields_eq,
+    module: has_fields_eq,
     function: HasFields::number,
      matches: [
          Zero => 0,
@@ -163,7 +163,7 @@ impl ReferenceTester{
 }]
 
 #[test_variants_ne{
-    module: enum_with_fields_ne,
+    module: has_fields_ne,
     function: HasFields::number,
      matches: [
          Zero => 42,
@@ -181,10 +181,47 @@ impl HasFields{
     fn number(self) -> u8{
         match self{
             HasFields::Zero => 0,
+            //note the space! keep this here. Useful to test
             HasFields::Named { a } => a,
             HasFields::Unnamed(a) => a,
         }
     
     }
-
 }
+
+struct Byte{inner: u8}
+
+struct Tuple((u8, u8));
+
+#[test_variants_eq{
+    module: has_struct_eq,
+    function: HasStruct::number,
+    matches: [
+        Byte(Byte{inner: 0}) => 0,
+        Tuple(Tuple((5,5))) => 10,
+    ]
+}]
+#[test_variants_ne{
+    module: has_struct_ne,
+    function: HasStruct::number,
+    matches: [
+        Byte(Byte{inner: 0}) => 10,
+        Tuple(Tuple((5,5))) => 0,
+    ]
+}]
+
+enum HasStruct{
+    Byte(Byte),
+    Tuple(Tuple),
+}
+
+
+impl HasStruct{
+    fn number(self) -> u8{
+        match self{
+            HasStruct::Byte(clike) => clike.inner,
+            HasStruct::Tuple(Tuple((first, second))) => first + second,
+        }
+    }
+}
+
