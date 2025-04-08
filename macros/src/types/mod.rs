@@ -1,8 +1,8 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    bracketed, parse,
-    parse::{Parse, ParseStream},
+    bracketed,
+    parse::{Parse, ParseBuffer, ParseStream},
     punctuated::Punctuated,
     token::{Bracket, Colon, Comma, PathSep},
     Expr, ExprReference, Ident, ItemEnum, Path, Token,
@@ -12,6 +12,31 @@ mod kw {
     custom_keyword!(module);
     custom_keyword!(function);
     custom_keyword!(matches);
+}
+
+///Parameters to a macro that look like function parameters if their names were required to be explicit.
+struct NamedMacroParam<T: Parse> {
+    _name: Ident,
+    _colon: Token![:],
+    param: T,
+}
+
+impl<T: Parse> NamedMacroParam<T> {
+    pub fn new(param_name: &str, input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let parsed_name = Ident::parse(&input)?;
+
+        if format_ident!("{param_name}") != parsed_name {
+            let passed_name = parsed_name.to_string();
+
+            panic!("Expected a parameter named: {param_name}, but found {passed_name} instead.");
+        }
+
+        Ok(NamedMacroParam {
+            _name: parsed_name,
+            _colon: Colon::parse(&input)?,
+            param: T::parse(&input)?,
+        })
+    }
 }
 
 #[derive(Clone)]
@@ -56,28 +81,46 @@ impl Parse for TestExpression {
     }
 }
 
-#[allow(dead_code)]
+struct TestExpressionList {
+    _brackets: Bracket,
+    list: Punctuated<TestExpression, Comma>,
+}
+
+impl Parse for TestExpressionList {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let list_buffer: ParseBuffer<'_>;
+
+        Ok(TestExpressionList {
+            _brackets: bracketed!(list_buffer in input),
+            list: Punctuated::parse_terminated(&list_buffer).expect("Parsing list failed"),
+        })
+    }
+}
 pub struct VariantsInput {
-    pub module_field: kw::module,
-    pub module_colon: Token![:],
-    pub module_name: Ident,
-    pub module_separator: Token![,],
-    pub function_field: kw::function,
-    pub function_colon: Token![:],
-    //using a path rather than an ident is useful for testing associated functions and trait impls.
-    pub function_name: Path,
-    pub function_separator: Token![,],
-    pub matches_field: kw::matches,
-    pub matches_colon: Token![:],
-    pub list_brackets: Bracket,
-    pub list: Punctuated<TestExpression, Token![,]>,
+    module: NamedMacroParam<Ident>,
+    _first_comma: Comma,
+    function: NamedMacroParam<Path>,
+    _second_comma: Comma,
+    test_expressions: NamedMacroParam<TestExpressionList>,
+}
+
+impl Parse for VariantsInput {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        Ok(VariantsInput {
+            module: NamedMacroParam::new("module", input)?,
+            _first_comma: Comma::parse(input)?,
+            function: NamedMacroParam::new("function", input)?,
+            _second_comma: Comma::parse(input)?,
+            test_expressions: NamedMacroParam::new("matches", input)?,
+        })
+    }
 }
 
 impl VariantsInput {
     fn validate(input: TokenStream, definition: &ItemEnum) -> Self {
-        let input: VariantsInput = parse(input).expect("Failed to parse");
+        let input = syn::parse::<VariantsInput>(input).expect("Failed to parse");
         let variant_count = definition.variants.len();
-        let length = input.list.len();
+        let length = input.test_expressions.param.list.len();
         if length != variant_count {
             let (item_or_items, were_or_was, variant_or_variants) = match length == 1 {
                 true => ("item", "was", "variant"),
@@ -95,12 +138,12 @@ impl VariantsInput {
         assertion: Assertion,
     ) -> TokenStream {
         let enum_definition =
-            parse::<ItemEnum>(item).expect("test_for_variants may only be used with enums.");
+            syn::parse::<ItemEnum>(item).expect("test_for_variants may only be used with enums.");
 
         let variants_input = VariantsInput::validate(input, &enum_definition);
 
-        let pairs_length = variants_input.list.len();
-        let tested_function = variants_input.function_name;
+        let pairs_length = variants_input.test_expressions.param.list.len();
+        let tested_function = variants_input.function.param;
 
         //the variants which will be tested
 
@@ -111,17 +154,9 @@ impl VariantsInput {
         //The patterns to be matched
         let mut expected_values = Vec::with_capacity(pairs_length);
 
-        for elem in variants_input.list.into_iter() {
+        for elem in variants_input.test_expressions.param.list.into_iter() {
             //generate test function names.
             {
-                /*
-                let variant_name_string = elem
-                    .input
-                    .expression_without_reference()
-                    .to_token_stream()
-                    .to_string();
-                    */
-
                 let variant_name_string = elem
                     .input
                     .expression_without_reference()
@@ -142,29 +177,8 @@ impl VariantsInput {
                     .ident
                     .clone();
 
-                //THIS IS WEAR INVALID IDENT ERROR IS THROWN
-
                 test_names.push(format_ident!("{tested_function}_{variant_name_string}"));
             }
-
-            /*
-            I really prefer this but cant get it to build and dont really know why
-
-            {
-                let mut test_name = proc_macro2::TokenStream::new();
-
-                elem.input
-                    .expression_without_reference()
-                    .to_tokens(&mut test_name);
-                tested_function
-                    .segments
-                    .last()
-                    .expect("The function (or path) does not have a final segment as expected.")
-                    .ident
-                    .to_tokens(&mut test_name);
-                test_names.push(test_name);
-            }
-            */
 
             //format variant name from &Variant to &Fully::Qualified::Path::To::Variant
             {
@@ -189,7 +203,7 @@ impl VariantsInput {
 
             expected_values.push(elem.pattern);
         }
-        let module = variants_input.module_name;
+        let module = variants_input.module.param;
 
         quote! {
             #enum_definition
@@ -208,30 +222,6 @@ impl VariantsInput {
             }
         }
         .into()
-    }
-}
-
-impl Parse for VariantsInput {
-    #[allow(unused_variables)]
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let list_buffer;
-        Ok(VariantsInput {
-            module_field: kw::module::parse(input).expect("expected \"module\" field first"),
-            module_colon: Colon::parse(input)
-                .expect("expected colon between the \"module\" field and the module name"),
-            module_name: Ident::parse(input).expect("expected an ident for the module name"),
-            module_separator: Comma::parse(input).expect("expected comma after function name"),
-            function_field: kw::function::parse(input).expect("expected \"function\" field first"),
-            function_colon: Colon::parse(input)
-                .expect("expected colon between the \"function\" field and the function name"),
-            function_name: Path::parse(input).expect("expected an ident for the function name"),
-            function_separator: Comma::parse(input).expect("expected comma after module name"),
-            matches_field: kw::matches::parse(input).expect("expected \"matches\" field"),
-            matches_colon: Colon::parse(input)
-                .expect("expected colon between the \"matches\" field and the list of matches"),
-            list_brackets: bracketed!(list_buffer in input),
-            list: Punctuated::parse_terminated(&list_buffer).expect("Parsing list failed"),
-        })
     }
 }
 
