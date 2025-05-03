@@ -1,0 +1,7 @@
+error: custom attribute panicked
+ --> src/test/trybuild_list_discriminants/no_type.rs:3:1
+  |
+3 | #[list_discriminants]
+  | ^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: message: Variant type must not be empty.

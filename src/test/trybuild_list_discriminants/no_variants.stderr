@@ -1,0 +1,7 @@
+error: custom attribute panicked
+ --> src/test/trybuild_list_discriminants/no_variants.rs:3:1
+  |
+3 | #[list_discriminants(u8)]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: message: list_variants does not support empty enums.

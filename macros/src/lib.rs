@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse::{self, Parse}, token::Comma, Ident, ItemEnum, ItemStruct, Signature, Type};
-use types::{Assertion, NamedMacroParam, TestExpressionList, TestVariantsInput};
+use syn::{Ident, ItemEnum, ItemStruct,  Type};
+use types::{Assertion,TestVariantsInput};
 
 mod types;
 
@@ -136,38 +136,49 @@ pub fn strawberry_fields(type_parameter: TokenStream, input: TokenStream) -> Tok
 }
 
 
+///Generates an array `Self::DISCRIMINANTS` with the discriminants of each in the order of their definition, top to bottom.
+///
+///Invocation of this macro takes the form #[list_discriminants(T)]
+///`T` must by a numeric type capable of serving as an enum discriminant.
+///The annotated struct will have a `repr` of the type provided.
 #[proc_macro_attribute]
-pub fn list_variants(variant_type: TokenStream, input: TokenStream) -> TokenStream{
+pub fn list_discriminants(variant_type: TokenStream, enum_definition: TokenStream) -> TokenStream{
 
+    if variant_type.is_empty() {
+        panic!("Variant type must not be empty.")
+    }
     let variant_type: Type = syn::parse(variant_type)
         .expect("Found a non type or generic parameter in type position.");
     
-    let item: ItemEnum = syn::parse(input).expect("list_variants must be used on an enum definition.");
+    let item: ItemEnum = syn::parse(enum_definition.clone()).expect("list_variants must be used on an enum definition.");
 
     let enum_name = item.ident;
     let (impl_generics, type_generics, where_clause)= item.generics.split_for_impl();
 
-    let variants = item.variants.clone().into_iter().map(|v| v.ident);
+    let variants = item.variants.clone().into_iter().map(|v| v.ident).collect::<Vec<_>>();
+    if variants.is_empty(){
+        //Reprs don't support empty enums
+        panic!("list_variants does not support empty enums.")
+    }
     let discriminants = item.variants.into_iter().map(|v| v.discriminant.expect("List Variants can only be used when all discriminants are explicitly defined").1).collect::<Vec<_>>();
 
     let variant_count = discriminants.len();
-    let indices = 0..variant_count;
 
     let test_name = format_ident!("{enum_name}_variants");
+    let enum_definition: proc_macro2::TokenStream = enum_definition.into();
 
     quote!{
-        impl #impl_generics #enum_name for #type_generics #where_clause{
-            const VARIANTS: [#variant_type; #variant_count] = [#(#discriminants),*];
+        #[repr(#variant_type)]
+        #enum_definition
+        
+        impl #impl_generics #enum_name #type_generics #where_clause {
+            pub const DISCRIMINANTS: [#variant_type; #variant_count] = [#(#discriminants),*];
         }
-
 
         #[cfg(test)]
         #[test]
         fn #test_name(){
-
-            #(
-                assert_eq!(Self::#variants as #variant_type,  VARIANTS[#indices]);
-            )*
+            assert_eq!(#enum_name::DISCRIMINANTS, [#(#discriminants),*]);
         }
     }.into()
 }
@@ -194,6 +205,7 @@ pub fn test_variants_ne(input: TokenStream, item: TokenStream) -> TokenStream {
     TestVariantsInput::parse_for_equality(input, item, Assertion::Ne)
 }
 
+/*
 #[proc_macro_attribute]
 pub fn for_each_variant(input: TokenStream, item: TokenStream) -> TokenStream{
 
@@ -242,4 +254,4 @@ pub fn for_each_variant(input: TokenStream, item: TokenStream) -> TokenStream{
             }
     }.into()    
     
-}
+}*/

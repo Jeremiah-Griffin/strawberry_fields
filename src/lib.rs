@@ -1,3 +1,4 @@
+pub use strawberry_fields_macros::list_discriminants;
 pub use strawberry_fields_macros::strawberry_fields;
 //re export derive macro
 #[cfg(test)]

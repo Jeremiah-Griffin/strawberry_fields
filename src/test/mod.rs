@@ -1,21 +1,21 @@
 //don't add cfg test it breaks rustanalyzer and rustfmt in weird ways
 use crate::{self as strawberry_fields, StrawberryFields};
-use strawberry_fields_macros::strawberry_fields;
+use strawberry_fields_macros::{list_discriminants, strawberry_fields};
 
 #[test]
-fn should_fail() {
+fn strawberry_fields_should_fail() {
     use trybuild::TestCases;
 
     let t = TestCases::new();
-    t.compile_fail("src/test/enum.rs");
-    t.compile_fail("src/test/tuple_struct.rs");
+    t.compile_fail("src/test/trybuild_strawberry_fields/enum.rs");
+    t.compile_fail("src/test/trybuild_strawberry_fields/tuple_struct.rs");
 }
 
 #[test]
-fn should_pass() {
+fn strawberry_fields_should_pass() {
     use trybuild::TestCases;
     let t = TestCases::new();
-    t.pass("src/test/struct.rs");
+    t.pass("src/test/trybuild_strawberry_fields/struct.rs");
 }
 
 static EMPTY: Empty = Empty {};
@@ -173,4 +173,28 @@ fn fold_fields_ref_empty() {
 fn field_count() {
     assert_eq!(Empty::FIELD_COUNT, 0);
     assert_eq!(NotEmpty::FIELD_COUNT, 2)
+}
+
+#[list_discriminants(u8)]
+enum Numbers {
+    Zero = 0,
+    One = 1,
+    Five = 5,
+    Ten = 10,
+}
+
+#[test]
+fn list_variants() {
+    assert_eq!(Numbers::DISCRIMINANTS, [0, 1, 5, 10]);
+}
+
+#[test]
+fn list_variants_should_fail() {
+    use trybuild::TestCases;
+
+    let t = TestCases::new();
+    t.compile_fail("src/test/trybuild_list_discriminants/no_type.rs");
+    t.compile_fail("src/test/trybuild_list_discriminants/no_variants.rs");
+    t.compile_fail("src/test/trybuild_list_discriminants/malformed_type.rs");
+    t.compile_fail("src/test/trybuild_list_discriminants/missing_discriminant.rs");
 }
