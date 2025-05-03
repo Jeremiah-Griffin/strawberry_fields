@@ -7,18 +7,12 @@ use syn::{
     token::{Bracket, Colon, Comma, PathSep},
     Expr, ExprReference, Ident, ItemEnum, Path, Token,
 };
-mod kw {
-    use syn::custom_keyword;
-    custom_keyword!(module);
-    custom_keyword!(function);
-    custom_keyword!(matches);
-}
 
 ///Parameters to a macro that look like function parameters if their names were required to be explicit.
-struct NamedMacroParam<T: Parse> {
+pub struct NamedMacroParam<T: Parse> {
     _name: Ident,
     _colon: Token![:],
-    param: T,
+    pub param: T,
 }
 
 impl<T: Parse> NamedMacroParam<T> {
@@ -81,9 +75,9 @@ impl Parse for TestExpression {
     }
 }
 
-struct TestExpressionList {
+pub struct TestExpressionList {
     _brackets: Bracket,
-    list: Punctuated<TestExpression, Comma>,
+    pub list: Punctuated<TestExpression, Comma>,
 }
 
 impl Parse for TestExpressionList {
@@ -96,17 +90,17 @@ impl Parse for TestExpressionList {
         })
     }
 }
-pub struct VariantsInput {
-    module: NamedMacroParam<Ident>,
+pub struct TestVariantsInput {
+    pub module: NamedMacroParam<Ident>,
     _first_comma: Comma,
-    function: NamedMacroParam<Path>,
+    pub function: NamedMacroParam<Path>,
     _second_comma: Comma,
-    test_expressions: NamedMacroParam<TestExpressionList>,
+    pub test_expressions: NamedMacroParam<TestExpressionList>,
 }
 
-impl Parse for VariantsInput {
+impl Parse for TestVariantsInput {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        Ok(VariantsInput {
+        Ok(TestVariantsInput {
             module: NamedMacroParam::new("module", input)?,
             _first_comma: Comma::parse(input)?,
             function: NamedMacroParam::new("function", input)?,
@@ -116,9 +110,9 @@ impl Parse for VariantsInput {
     }
 }
 
-impl VariantsInput {
-    fn validate(input: TokenStream, definition: &ItemEnum) -> Self {
-        let input = syn::parse::<VariantsInput>(input).expect("Failed to parse");
+impl TestVariantsInput {
+    pub fn validate(input: TokenStream, definition: &ItemEnum) -> Self {
+        let input = syn::parse::<TestVariantsInput>(input).expect("Failed to parse");
         let variant_count = definition.variants.len();
         let length = input.test_expressions.param.list.len();
         if length != variant_count {
@@ -140,7 +134,7 @@ impl VariantsInput {
         let enum_definition =
             syn::parse::<ItemEnum>(item).expect("test_for_variants may only be used with enums.");
 
-        let variants_input = VariantsInput::validate(input, &enum_definition);
+        let variants_input = TestVariantsInput::validate(input, &enum_definition);
 
         let pairs_length = variants_input.test_expressions.param.list.len();
         let tested_function = variants_input.function.param;
@@ -149,7 +143,7 @@ impl VariantsInput {
 
         //TODO: This is beyond horrible. Collect this into a single vector of a T that implements to tokens
         let mut variant_names: Vec<proc_macro2::TokenStream> = Vec::with_capacity(pairs_length);
-        //names generated from the function name and the variant tame which will be given to each test case
+        //names generated from the function name and the variant name which will be given to each test case
         let mut test_names: Vec<Ident> = Vec::with_capacity(pairs_length);
         //The patterns to be matched
         let mut expected_values = Vec::with_capacity(pairs_length);
