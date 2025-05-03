@@ -147,7 +147,7 @@ pub fn list_variants(variant_type: TokenStream, input: TokenStream) -> TokenStre
     let enum_name = item.ident;
     let (impl_generics, type_generics, where_clause)= item.generics.split_for_impl();
 
-    let variants = item.variants.iter().map(|v| Clone::clone(&v.ident));
+    let variants = item.variants.clone().into_iter().map(|v| v.ident);
     let discriminants = item.variants.into_iter().map(|v| v.discriminant.expect("List Variants can only be used when all discriminants are explicitly defined").1).collect::<Vec<_>>();
 
     let variant_count = discriminants.len();
